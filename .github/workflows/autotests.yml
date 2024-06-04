@@ -1,0 +1,159 @@
+name: Manually running
+
+on:
+  workflow_dispatch:
+    inputs:
+      typeOfTests:
+        description: 'Type of tests'
+        required: true
+        default: 'Smoke'
+        type: choice
+        options:
+          - Smoke
+          - Regress
+          - Billing
+          - Regress and validation
+          - The entire scope
+      environmentForTheTestRun:
+        description: 'Environment to run tests'
+        required: true
+        type: choice
+        default: 'Stage'
+        options:
+          - Stage
+          - Dev
+          - Preprod
+          - Prod
+env:
+  ENVIRONMENT: ${{ inputs.environmentForTheTestRun }}
+  TYPE_OF_TESTS: ${{ inputs.typeOfTests }}
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Build with Maven
+        run: mvn -B validate --file pom.xml
+
+  test_run:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Started Notification
+        uses: mikesprague/teams-incoming-webhook-action@v1
+        with:
+          github-token: ${{ github.token }}
+          webhook-url: ${{ secrets.MS_TEAMS_WEBHOOK_URL }}
+          title: "Manual ${{ inputs.typeOfTests }} run on the ${{ inputs.environmentForTheTestRun }} environment started"
+          color: "info"
+          message: "[Latest test report](https://renalworksrims2.github.io/webAutomationFramework)"
+
+      - uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Cache Maven packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      #      - name: Configure aws credentials
+      #        uses: aws-actions/configure-aws-credentials@v1
+      #        with:
+      #          role-to-assume: arn:aws:iam::301984201653:role/autotest_github_role
+      #          role-session-name: GitHubActionsAutotest
+      #          aws-region: "us-east-1"
+
+      - name: The entire scope of tests. Test run with Maven
+        if: inputs.typeOfTests == 'The entire scope'
+        run: mvn clean test
+
+      - name: Smoke suite test run with Maven
+        if: inputs.typeOfTests == 'Smoke'
+        run: mvn clean test -Dsurefire.suiteXmlFiles=src/test/resources/suites/smoke.xml
+
+      - name: Billing suite test run with Maven
+        if: inputs.typeOfTests == 'Billing'
+        run: mvn clean test -Dsurefire.suiteXmlFiles=src/test/resources/suites/billing.xml
+
+      - name: Regress suite test run with Maven
+        if: inputs.typeOfTests == 'Regress'
+        run: mvn clean test -Dsurefire.suiteXmlFiles=src/test/resources/suites/regress.xml
+
+      - name: Regress and fields validation suite test run with Maven
+        if: inputs.typeOfTests == 'Regress and validation'
+        run: mvn clean test -Dsurefire.suiteXmlFiles=src/test/resources/suites/regressAndValidation.xml
+
+      - name: Test marketplace action
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        id: allure-report
+        with:
+          allure_results: target/allure-results
+          gh_pages: gh-pages
+          allure_report: target/surefire-reports
+          allure_history: allure-history
+
+      - name: Logs uploading
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: logs
+          path: logs/logs
+
+      - name: Deploy report to Github Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-history
+          cname: renalworksrims2.github.io/webAutomationFramework
+
+      - name: Cancelled Notification
+        if: ${{ cancelled() }}
+        uses: mikesprague/teams-incoming-webhook-action@v1
+        with:
+          github-token: ${{ github.token }}
+          webhook-url: ${{ secrets.MS_TEAMS_WEBHOOK_URL }}
+          deploy-card: true
+          title: "Test run cancelled"
+          color: "warning"
+
+      - name: Success Notification
+        if: ${{ success() }}
+        uses: mikesprague/teams-incoming-webhook-action@v1
+        with:
+          github-token: ${{ github.token }}
+          webhook-url: ${{ secrets.MS_TEAMS_WEBHOOK_URL }}
+          deploy-card: true
+          title: "Manual ${{ inputs.typeOfTests }} run on the ${{ inputs.environmentForTheTestRun }} environment successful - [Latest test report] https://renalworksrims2.github.io/webAutomationFramework"
+          color: "success"
+          message: "Review test report https://renalworksrims2.github.io/webAutomationFramework "
+
+      - name: Failure Notification
+        if: ${{ failure() }}
+        uses: mikesprague/teams-incoming-webhook-action@v1
+        with:
+          github-token: ${{ github.token }}
+          webhook-url: ${{ secrets.MS_TEAMS_WEBHOOK_URL }}
+          deploy-card: true
+          title: "Manual ${{ inputs.typeOfTests }} run on the ${{ inputs.environmentForTheTestRun }} environment failed - [Latest test report] https://renalworksrims2.github.io/webAutomationFramework"
+          color: "failure"
+          message: "Review test report  https://renalworksrims2.github.io/webAutomationFramework"
