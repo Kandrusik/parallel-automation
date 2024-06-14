@@ -1,0 +1,6 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Fri Jun 14 02:33:59 GMT 2024","Fri Jun 14 02:33:59 GMT 2024","6","Parallel suite","ParallelTestSuite","test.ParallelTest","test.ParallelTest","test2","test2",""
+"passed","Fri Jun 14 02:33:59 GMT 2024","Fri Jun 14 02:33:59 GMT 2024","3","Parallel suite","ParallelTestSuite","test.ParallelTest","test.ParallelTest","test5","test5",""
+"passed","Fri Jun 14 02:33:59 GMT 2024","Fri Jun 14 02:33:59 GMT 2024","5","Parallel suite","ParallelTestSuite","test.ParallelTest","test.ParallelTest","test1","test1",""
+"passed","Fri Jun 14 02:33:59 GMT 2024","Fri Jun 14 02:33:59 GMT 2024","5","Parallel suite","ParallelTestSuite","test.ParallelTest","test.ParallelTest","test4","test4",""
+"passed","Fri Jun 14 02:33:59 GMT 2024","Fri Jun 14 02:33:59 GMT 2024","5","Parallel suite","ParallelTestSuite","test.ParallelTest","test.ParallelTest","test3","test3",""
